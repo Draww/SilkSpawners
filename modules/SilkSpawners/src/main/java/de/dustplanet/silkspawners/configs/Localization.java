@@ -15,9 +15,9 @@ public class Localization extends AbstractConfiguration {
     }
 
     private void loadDefaultLocalization() {
-        config.options()
-                .header("This line affects the new naming of spawners, to DISABLE this, change the message back to Monster Spawner");
         config.addDefault("spawnerName", "&e%creature% &fSpawner");
+        config.addComment("spawnerName",
+                "# This line affects the new naming of spawners, to DISABLE this, change the message back to Monster Spawner");
         config.addDefault("addedEgg", "'&2Successfully added &e%amount% %creature% spawn egg(s) &2to your inventory.");
         config.addComment("addedEgg", "");
         config.addDefault("addedEggOtherPlayer", "&2Added &e%amount% %creature% spawn egg(s) &2to &e%player%&2''s inventory.");
@@ -40,7 +40,6 @@ public class Localization extends AbstractConfiguration {
         config.addDefault("playerOffline", "&4Sorry this player is offline!");
         config.addComment("playerOffline", "");
         config.addDefault("changingDeniedFactions", "&4You are not allowed to change spawners in other peoples territory!");
-        config.addDefault("changingDeniedFeudal", "&4You are not allowed to change spawners in other peoples kingdom!");
         config.addDefault("changingDeniedWorldGuard", "&4Changing spawner type denied by WorldGuard protection.");
         config.addDefault("getSpawnerType", "&2This is a(n) &e%creature% spawner&2.");
         config.addDefault("unknownArgument", "&4Unrecognized argument. See &e/silkspawners help");
@@ -67,9 +66,10 @@ public class Localization extends AbstractConfiguration {
         config.addDefault("help",
                 "&7------&6SilkSpawners v%version% Help Menu&7------\n" + "&e/ss help &7- &2Displays the help menu.\n"
                         + "&e/ss list|all &7- &2Displays all available creatures.\n"
-                        + "&e/ss view &7- &2Displays information about the viewed spawner.\n"
-                        + "&e/ss reload|rl &7- &2Reloads the configuration files\n"
+                        + "&e/ss view|info &7- &2Displays information about the viewed spawner.\n"
+                        + "&e/ss reload|rl &7- &2Reloads the configuration files.\n"
                         + "&e/ss change <newMob> &7- &2Changes the spawner you are currently holding or viewing at.\n"
-                        + "&e/ss give|add <player> <mob> [amount] &7- &2Gives a spawner or egg to the player. Amount is optional");
+                        + "&e/ss give|add <player> <mob> [amount] &7- &2Gives a spawner or egg to the player. Amount is optional.\n"
+                        + "&e/ss selfget|i <mob> [amount] &7- &2Gives a spawner or egg to you. Amount is optional.");
     }
 }

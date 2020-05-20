@@ -1,5 +1,7 @@
 package de.dustplanet.silkspawners.commands;
 
+import java.util.Locale;
+
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
@@ -32,7 +34,7 @@ public class SpawnerCommand implements CommandExecutor {
     public boolean onCommand(CommandSender sender, Command cmd, String commandLabel, String[] args) {
         switch (args.length) {
             case 1:
-                switch (args[0].toLowerCase()) {
+                switch (args[0].toLowerCase(Locale.ENGLISH)) {
                     case "help":
                         handleHelp(sender);
                         break;
@@ -44,6 +46,7 @@ public class SpawnerCommand implements CommandExecutor {
                     case "rl":
                         handleReload(sender);
                         break;
+                    case "info":
                     case "view":
                         handleView(sender);
                         break;
@@ -53,10 +56,14 @@ public class SpawnerCommand implements CommandExecutor {
                 }
                 break;
             case 2:
-                switch (args[0].toLowerCase()) {
+                switch (args[0].toLowerCase(Locale.ENGLISH)) {
                     case "change":
                     case "set":
                         handleChange(sender, args[1]);
+                        break;
+                    case "selfget":
+                    case "i":
+                        handleGive(sender, sender.getName(), args[1], null);
                         break;
                     default:
                         handleUnknownArgument(sender);
@@ -64,10 +71,14 @@ public class SpawnerCommand implements CommandExecutor {
                 }
                 break;
             case 3:
-                switch (args[0].toLowerCase()) {
+                switch (args[0].toLowerCase(Locale.ENGLISH)) {
                     case "give":
                     case "add":
-                        handleGive(sender, args[1], args[2].toLowerCase(), null);
+                        handleGive(sender, args[1], args[2].toLowerCase(Locale.ENGLISH), null);
+                        break;
+                    case "selfget":
+                    case "i":
+                        handleGive(sender, sender.getName(), args[1], args[2]);
                         break;
                     default:
                         handleUnknownArgument(sender);
@@ -75,10 +86,10 @@ public class SpawnerCommand implements CommandExecutor {
                 }
                 break;
             case 4:
-                switch (args[0].toLowerCase()) {
+                switch (args[0].toLowerCase(Locale.ENGLISH)) {
                     case "give":
                     case "add":
-                        handleGive(sender, args[1], args[2].toLowerCase(), args[3]);
+                        handleGive(sender, args[1], args[2].toLowerCase(Locale.ENGLISH), args[3]);
                         break;
                     default:
                         handleUnknownArgument(sender);
@@ -127,11 +138,15 @@ public class SpawnerCommand implements CommandExecutor {
     }
 
     private void handleGiveEgg(CommandSender sender, Player receiver, String mob, int amount) {
-
+        if (su.isUnknown(mob)) {
+            su.sendMessage(sender, ChatColor.translateAlternateColorCodes('\u0026', plugin.localization.getString("unknownCreature"))
+                    .replace("%creature%", mob));
+            return;
+        }
         String entityID = su.getDisplayNameToMobID().get(mob);
         String creature = su.getCreatureName(entityID);
 
-        String mobName = creature.toLowerCase().replace(" ", "");
+        String mobName = creature.toLowerCase(Locale.ENGLISH).replace(" ", "");
 
         // Add egg
         if (sender.hasPermission("silkspawners.freeitemegg." + mobName)) {
@@ -140,7 +155,7 @@ public class SpawnerCommand implements CommandExecutor {
                 su.sendMessage(sender, ChatColor.translateAlternateColorCodes('\u0026', plugin.localization.getString("noFreeSlot")));
                 return;
             }
-            receiver.getInventory().addItem(su.newEggItem(entityID, amount));
+            receiver.getInventory().addItem(su.newEggItem(entityID, amount, su.getCreatureEggName(entityID)));
             if (sender instanceof Player) {
                 Player pSender = (Player) sender;
                 if (pSender.getUniqueId() == receiver.getUniqueId()) {
@@ -167,8 +182,7 @@ public class SpawnerCommand implements CommandExecutor {
     }
 
     private void handleGiveSpawner(CommandSender sender, Player receiver, String mob, int amount) {
-
-        if (su.isUnkown(mob)) {
+        if (su.isUnknown(mob)) {
             su.sendMessage(sender, ChatColor.translateAlternateColorCodes('\u0026', plugin.localization.getString("unknownCreature"))
                     .replace("%creature%", mob));
             return;
@@ -177,7 +191,7 @@ public class SpawnerCommand implements CommandExecutor {
         String entityID = su.getDisplayNameToMobID().get(mob);
         String creature = su.getCreatureName(entityID);
         // Filter spaces (like Zombie Pigman)
-        String mobName = creature.toLowerCase().replace(" ", "");
+        String mobName = creature.toLowerCase(Locale.ENGLISH).replace(" ", "");
 
         // Add spawner
         if (sender.hasPermission("silkspawners.freeitem." + mobName)) {
@@ -214,9 +228,8 @@ public class SpawnerCommand implements CommandExecutor {
     }
 
     private void handleChange(CommandSender sender, String newMob) {
-
         if (sender instanceof Player) {
-            if (su.isUnkown(newMob)) {
+            if (su.isUnknown(newMob)) {
                 su.sendMessage(sender, ChatColor.translateAlternateColorCodes('\u0026', plugin.localization.getString("unknownCreature"))
                         .replace("%creature%", newMob));
                 return;
@@ -225,7 +238,7 @@ public class SpawnerCommand implements CommandExecutor {
             String entityID = su.getDisplayNameToMobID().get(newMob);
             String creature = su.getCreatureName(entityID);
             // Filter spaces (like Zombie Pigman)
-            String mobName = creature.toLowerCase().replace(" ", "");
+            String mobName = creature.toLowerCase(Locale.ENGLISH).replace(" ", "");
 
             Player player = (Player) sender;
 
@@ -250,7 +263,7 @@ public class SpawnerCommand implements CommandExecutor {
 
             if (itemMaterial != null && itemMaterial == su.nmsProvider.getSpawnerMaterial()) {
                 handleChangeSpawner(player, entityID, mobName, itemInHand);
-            } else if (itemMaterial != null && itemMaterial == su.nmsProvider.getSpawnEggMaterial()) {
+            } else if (itemMaterial != null && su.nmsProvider.getSpawnEggMaterials().contains(itemMaterial)) {
                 handleChangeEgg(player, entityID, mobName, itemInHand);
             } else {
                 su.sendMessage(player,
@@ -263,7 +276,6 @@ public class SpawnerCommand implements CommandExecutor {
     }
 
     private void handleBlockChange(Player player, Block block, String entityID, String mobName) {
-
         if (!player.hasPermission("silkspawners.changetype." + mobName)) {
             su.sendMessage(player,
                     ChatColor.translateAlternateColorCodes('\u0026', plugin.localization.getString("noPermissionChangingSpawner")));
@@ -289,7 +301,6 @@ public class SpawnerCommand implements CommandExecutor {
     }
 
     private void handleChangeSpawner(Player player, String entityID, String mobName, ItemStack itemInHand) {
-
         if (!player.hasPermission("silkspawners.changetype." + mobName)) {
             su.sendMessage(player,
                     ChatColor.translateAlternateColorCodes('\u0026', plugin.localization.getString("noPermissionChangingSpawner")));
@@ -316,7 +327,6 @@ public class SpawnerCommand implements CommandExecutor {
     }
 
     private void handleChangeEgg(Player player, String entityID, String mobName, ItemStack itemInHand) {
-
         if (!player.hasPermission("silkspawners.changetype." + mobName)) {
             su.sendMessage(player,
                     ChatColor.translateAlternateColorCodes('\u0026', plugin.localization.getString("noPermissionChangingEgg")));

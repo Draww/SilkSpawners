@@ -2,6 +2,7 @@ package de.dustplanet.silkspawners.compat.api;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.SortedMap;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -15,10 +16,17 @@ import org.bukkit.plugin.Plugin;
 public interface NMSProvider {
 
     public static final int SPAWNER_ID = 52;
+    public static final String NAMESPACED_SPAWNER_ID = "spawner";
 
     void spawnEntity(World world, String entityID, double x, double y, double z);
 
-    List<String> rawEntityMap();
+    default List<String> rawEntityMap() {
+        return null;
+    }
+
+    default SortedMap<Integer, String> legacyRawEntityMap() {
+        return null;
+    }
 
     String getMobNameOfSpawner(BlockState blockState);
 
@@ -38,7 +46,12 @@ public interface NMSProvider {
         return Bukkit.getOnlinePlayers();
     }
 
-    ItemStack newEggItem(String entityID, int amount);
+    @Deprecated
+    default ItemStack newEggItem(String entityID, int amount) {
+        return newEggItem(entityID, amount, null);
+    }
+
+    ItemStack newEggItem(String entityID, int amount, String displayName);
 
     @SuppressWarnings("unused")
     default String getVanillaEggNBTEntityID(ItemStack item) {
@@ -61,14 +74,27 @@ public interface NMSProvider {
     Player getPlayer(String playerUUIDOrName);
 
     default Material getSpawnerMaterial() {
-        return Material.MOB_SPAWNER;
+        return Material.SPAWNER;
     }
 
     default Material getIronFenceMaterial() {
-        return Material.IRON_FENCE;
+        return Material.IRON_BARS;
     }
 
+    @Deprecated
     default Material getSpawnEggMaterial() {
-        return Material.MONSTER_EGG;
+        Collection<Material> spawnEggs = this.getSpawnEggMaterials();
+        if (spawnEggs.size() > 1) {
+            throw new UnsupportedOperationException(
+                    "Spawn egg is not determinable because there is more than one material, please use getSpawnEggMaterials() for v1.13+");
+        }
+        return spawnEggs.iterator().next();
+    }
+
+    Collection<Material> getSpawnEggMaterials();
+
+    // Only required for MC 1.8
+    default int getIDForEntity(@SuppressWarnings("unused") String entityID) {
+        return 0;
     }
 }

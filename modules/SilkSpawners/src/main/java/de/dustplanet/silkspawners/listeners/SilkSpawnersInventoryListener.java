@@ -1,5 +1,7 @@
 package de.dustplanet.silkspawners.listeners;
 
+import java.util.Locale;
+
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -29,6 +31,7 @@ public class SilkSpawnersInventoryListener implements Listener {
         su = util;
     }
 
+    @SuppressWarnings("deprecation")
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onPrepareItemCraftEvent(PrepareItemCraftEvent event) {
         if (event.getRecipe() == null || event.getRecipe().getResult() == null) {
@@ -42,7 +45,7 @@ public class SilkSpawnersInventoryListener implements Listener {
         ItemStack result = event.getRecipe().getResult();
 
         for (ItemStack itemStack : event.getInventory().getContents()) {
-            if (itemStack.getType() == su.nmsProvider.getSpawnEggMaterial() && itemStack.getDurability() == 0) {
+            if (su.nmsProvider.getSpawnEggMaterials().contains(itemStack.getType()) && itemStack.getDurability() == 0) {
                 String entityID = su.getStoredEggEntityID(itemStack);
                 result = su.newSpawnerItem(entityID, su.getCustomSpawnerName(entityID), result.getAmount(), true);
                 event.getInventory().setResult(result);
@@ -72,7 +75,7 @@ public class SilkSpawnersInventoryListener implements Listener {
         }
         String creatureName = su.getCreatureName(entityID);
 
-        String spawnerName = creatureName.toLowerCase().replace(" ", "");
+        String spawnerName = creatureName.toLowerCase(Locale.ENGLISH).replace(" ", "");
         if (!player.hasPermission("silkspawners.craft." + spawnerName)) {
             event.setCancelled(true);
             su.sendMessage(player,

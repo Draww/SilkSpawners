@@ -2,10 +2,15 @@ package de.dustplanet.util;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.SortedMap;
+import java.util.TreeMap;
 
 import javax.annotation.Nullable;
 
@@ -25,6 +30,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.Plugin;
 
+import com.google.common.base.CaseFormat;
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldguard.WorldGuard;
 import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
@@ -50,17 +56,24 @@ public class SilkUtil {
      * This HashMap is holding the internal Minecraft name of each mob and the display name of each mob.
      */
     @Getter
-    private Map<String, String> mobIDToDisplayName = new ConcurrentHashMap<>();
+    private Map<String, String> mobIDToDisplayName = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 
     /**
      * This HashMap is holding the display name and aliases of each mob and the internal Minecraft name.
      */
     @Getter
-    private Map<String, String> displayNameToMobID = new ConcurrentHashMap<>();
+    private Map<String, String> displayNameToMobID = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+
+    /**
+     * List of enabled (and therefore) known entities.
+     */
+    @Getter
+    private List<String> knownEntities = new ArrayList<>();
 
     /**
      * Default (fallback) entityID, standard is the pig.
      */
+    @SuppressWarnings("deprecation")
     private String defaultEntityID = EntityType.PIG.getName();
 
     /**
@@ -130,7 +143,7 @@ public class SilkUtil {
      */
     private boolean setupNMSProvider() {
         String version = plugin.getNMSVersion();
-        
+
         // Rare cases might trigger API usage before SilkSpawners
         if (version == null) {
             String packageName = Bukkit.getServer().getClass().getPackage().getName();
@@ -169,6 +182,7 @@ public class SilkUtil {
             plugin.getLogger().info("Scanning the mobs");
         }
         for (String entityID : entities) {
+            @SuppressWarnings("deprecation")
             EntityType bukkitEntity = EntityType.fromName(entityID);
             Class<? extends Entity> bukkitEntityClass = bukkitEntity == null ? null : bukkitEntity.getEntityClass();
 
@@ -187,6 +201,9 @@ public class SilkUtil {
                 continue;
             }
 
+            // Add the known ID [we omit all disabled entities]
+            knownEntities.add(entityID);
+
             String displayName = plugin.getMobs().getString("creatures." + entityID + ".displayName");
             if (displayName == null) {
                 displayName = entityID;
@@ -195,31 +212,37 @@ public class SilkUtil {
             mobIDToDisplayName.put(entityID, displayName);
 
             List<String> aliases = plugin.getMobs().getStringList("creatures." + entityID + ".aliases");
-            aliases.add(displayName.toLowerCase().replace(" ", ""));
-            aliases.add(entityID.toLowerCase().replace(" ", ""));
+            aliases.add(displayName.toLowerCase(Locale.ENGLISH).replace(" ", ""));
+            aliases.add(displayName.toLowerCase(Locale.ENGLISH).replace(" ", "_"));
+            aliases.add(entityID.toLowerCase(Locale.ENGLISH).replace(" ", ""));
+            aliases.add(entityID.toLowerCase(Locale.ENGLISH).replace(" ", "_"));
+            aliases.add(entityID.toLowerCase(Locale.ENGLISH).replace("_", ""));
+            aliases.add(CaseFormat.UPPER_CAMEL.to(CaseFormat.LOWER_UNDERSCORE, entityID));
+            if (bukkitEntity != null) {
+                aliases.add(bukkitEntity.name().toLowerCase(Locale.ENGLISH).replace(" ", ""));
+                aliases.add(bukkitEntity.name().toLowerCase(Locale.ENGLISH).replace(" ", "_"));
+            }
+            Set<String> aliasSet = new HashSet<>(aliases);
 
-            for (String alias : aliases) {
+            for (String alias : aliasSet) {
                 displayNameToMobID.put(alias, entityID);
             }
 
             if (verbose) {
                 plugin.getLogger().info("Entity " + entityID + " = " + bukkitEntity + "[" + bukkitEntityClass + "] (display name: "
-                        + displayName + ", aliases: " + aliases + ")");
+                        + displayName + ", aliases: " + aliasSet + ")");
             }
         }
 
         // Should we use something else as the default?
         if (plugin.getConfig().contains("defaultCreature")) {
             // Lowercase is better to search
-            String defaultCreatureString = plugin.getConfig().getString("defaultCreature", "pig").toLowerCase();
+            String defaultCreatureString = plugin.getConfig().getString("defaultCreature", "pig").toLowerCase(Locale.ENGLISH);
             // If we know the internal name
             if (displayNameToMobID.containsKey(defaultCreatureString)) {
-                // Get our entityID
-                String defaultEntityID = displayNameToMobID.get(defaultCreatureString);
-                // Change default
                 setDefaultEntityID(defaultEntityID);
                 if (verbose) {
-                    plugin.getLogger().info("Default monster spawner set to " + mobIDToDisplayName.get(defaultEntityID));
+                    plugin.getLogger().info("Default monster spawner set to " + defaultEntityID);
                 }
             } else {
                 // Unknown, fallback
@@ -289,12 +312,26 @@ public class SilkUtil {
     /**
      * Returns a new ItemStack of a spawn egg with the specified amount and mob.
      *
+     * @deprecated Use {@link SilkUtil#newEggItem(String, int, String)} instead.
      * @param entityID which mob should be spawned
      * @param amount the amount of spawn eggs
      * @return the ItemStack
      */
+    @Deprecated
     public ItemStack newEggItem(String entityID, int amount) {
         return nmsProvider.newEggItem(entityID, amount);
+    }
+
+    /**
+     * Returns a new ItemStack of a spawn egg with the specified amount and mob.
+     *
+     * @param entityID which mob should be spawned
+     * @param amount the amount of spawn eggs
+     * @param displayName the display name of the egg in case of unknown entities
+     * @return the ItemStack
+     */
+    public ItemStack newEggItem(String entityID, int amount, String displayName) {
+        return nmsProvider.newEggItem(entityID, amount, displayName);
     }
 
     // Create a tagged a mob spawner item with it's entity ID and custom amount
@@ -308,7 +345,16 @@ public class SilkUtil {
      * @return the ItemStack with the configured options
      */
     public ItemStack newSpawnerItem(String entityID, String customName, int amount, boolean forceLore) {
-        entityID = displayNameToMobID.get(entityID);
+        String targetEntityID = null;
+        try {
+            targetEntityID = displayNameToMobID.get(entityID);
+        } catch (@SuppressWarnings("unused") NullPointerException e) {
+            targetEntityID = entityID;
+        }
+        if (targetEntityID == null) {
+            targetEntityID = entityID;
+        }
+
         String spawnerName = customName;
         if (customName == null || customName.isEmpty()) {
             spawnerName = "Monster Spawner";
@@ -316,19 +362,19 @@ public class SilkUtil {
         ItemStack item = new ItemStack(nmsProvider.getSpawnerMaterial(), amount);
         ItemMeta meta = item.getItemMeta();
 
-        if (!spawnerName.equalsIgnoreCase("Monster Spawner")) {
+        if (!"Monster Spawner".equalsIgnoreCase(spawnerName)) {
             meta.setDisplayName(
-                    ChatColor.translateAlternateColorCodes('\u0026', spawnerName).replace("%creature%", getCreatureName(entityID)));
+                    ChatColor.translateAlternateColorCodes('\u0026', spawnerName).replace("%creature%", getCreatureName(targetEntityID)));
         }
 
         if ((forceLore || !isUsingReflection()) && plugin.getConfig().getBoolean("useMetadata", true)) {
             ArrayList<String> lore = new ArrayList<>();
-            lore.add("entityID:" + entityID);
+            lore.add("entityID:" + targetEntityID);
             meta.setLore(lore);
         }
         item.setItemMeta(meta);
 
-        return nmsProvider.setNBTEntityID(item, entityID);
+        return nmsProvider.setNBTEntityID(item, targetEntityID);
     }
 
     /**
@@ -417,6 +463,7 @@ public class SilkUtil {
      * @param mobID the name (String) of the mob
      * @return the result, true or false
      */
+    @SuppressWarnings("deprecation")
     public boolean isRecognizedMob(String mobID) {
         return EntityType.fromName(mobID) != null;
     }
@@ -427,6 +474,7 @@ public class SilkUtil {
      * @param block the spawner block
      * @return the entity ID
      */
+    @SuppressWarnings("deprecation")
     @Nullable
     public String getSpawnerEntityID(Block block) {
         BlockState blockState = block.getState();
@@ -462,7 +510,7 @@ public class SilkUtil {
         if (isUsingReflection()) {
             String mobID = displayNameToMobID.get(entity);
             if (mobID == null) {
-                mobID = getCreatureName(defaultEntityID);
+                mobID = displayNameToMobID.get(defaultEntityID);
             }
 
             if (nmsProvider.setMobNameOfSpawner(blockState, mobID)) {
@@ -516,7 +564,8 @@ public class SilkUtil {
             customName = "Monster Spawner";
         }
         // Please eggs or spawners
-        if (item == null || item.getType() != nmsProvider.getSpawnerMaterial() && item.getType() != nmsProvider.getSpawnEggMaterial()) {
+        if (item == null
+                || item.getType() != nmsProvider.getSpawnerMaterial() && !nmsProvider.getSpawnEggMaterials().contains(item.getType())) {
             return item;
         }
         ItemMeta meta = item.getItemMeta();
@@ -557,9 +606,18 @@ public class SilkUtil {
      * @return the displayname of the mob
      */
     @SuppressWarnings("deprecation")
-    @Nullable
     public String getCreatureName(String entity) {
-        String displayName = mobIDToDisplayName.get(entity);
+        if (entity == null) {
+            return "???";
+        }
+        String displayName = null;
+        if (mobIDToDisplayName != null) {
+            try {
+                displayName = mobIDToDisplayName.get(entity);
+            } catch (@SuppressWarnings("unused") NullPointerException e) {
+                // Ignore
+            }
+        }
         if (displayName == null) {
             EntityType entityType = EntityType.fromName(entity);
             if (entityType != null) {
@@ -569,6 +627,17 @@ public class SilkUtil {
             }
         }
         return displayName;
+    }
+
+    /**
+     * Get the creature name (display name) of an ID. Internal mob names are are like 'LavaSlime', this will return the in-game name like
+     * 'Magma Cube'
+     *
+     * @param entity the entity
+     * @return the displayname of the mob
+     */
+    public String getCreatureEggName(String entity) {
+        return getCreatureName(entity) + " Spawn Egg";
     }
 
     /**
@@ -596,15 +665,25 @@ public class SilkUtil {
      */
     public List<String> scanEntityMap() {
         List<String> entities = nmsProvider.rawEntityMap();
+        // Legacy support, this will add the IDs as aliases
+        if (entities == null) {
+            SortedMap<Integer, String> legacyRawEntityMap = nmsProvider.legacyRawEntityMap();
+            entities = new ArrayList<>(legacyRawEntityMap.values());
+            for (Entry<Integer, String> entry : legacyRawEntityMap.entrySet()) {
+                displayNameToMobID.put(entry.getKey().toString(), entry.getValue());
+            }
+        }
         // Let's scan for added entities by e.g MCPC+
         for (EntityType type : EntityType.values()) {
+            @SuppressWarnings("deprecation")
             String name = type.getName();
+            @SuppressWarnings("deprecation")
             short id = type.getTypeId();
             // If name is not defined or ID -1 --> skip this bad entity
             if (name == null || id == -1) {
                 continue;
             }
-            if (!entities.contains(name)) {
+            if (!entities.stream().anyMatch(name::equalsIgnoreCase)) {
                 entities.add(name);
             }
         }
@@ -644,6 +723,7 @@ public class SilkUtil {
     public void clearAll() {
         displayNameToMobID.clear();
         mobIDToDisplayName.clear();
+        knownEntities.clear();
     }
 
     /**
@@ -663,7 +743,7 @@ public class SilkUtil {
      * @param creatureString the mob name
      * @return the result, true of false
      */
-    public boolean isUnkown(String creatureString) {
+    public boolean isUnknown(String creatureString) {
         return !displayNameToMobID.containsKey(creatureString);
     }
 
@@ -675,6 +755,16 @@ public class SilkUtil {
      */
     public boolean isKnown(String creatureString) {
         return displayNameToMobID.containsKey(creatureString);
+    }
+
+    /**
+     * Lookup if the mob is known.
+     *
+     * @param entityID the official internal name of the mob
+     * @return the result, true of false
+     */
+    public boolean isKnownEntityID(String entityID) {
+        return knownEntities.contains(entityID);
     }
 
     /**
@@ -795,9 +885,9 @@ public class SilkUtil {
             RegionContainer regionContainer = instance.getPlatform().getRegionContainer();
             RegionQuery query = regionContainer.createQuery();
             return query.testBuild(BukkitAdapter.adapt(location), wg.wrapPlayer(player), Flags.BUILD);
-        } catch (@SuppressWarnings("unused") Exception e) {
+        } catch (@SuppressWarnings("unused") Exception | NoClassDefFoundError e) {
             try {
-                wg.getClass().getDeclaredMethod("canBuild", Player.class, Location.class).invoke(wg, player, location);
+                return (boolean) wg.getClass().getDeclaredMethod("canBuild", Player.class, Location.class).invoke(wg, player, location);
             } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException | NoSuchMethodException
                     | SecurityException e1) {
                 e1.printStackTrace();
@@ -809,5 +899,15 @@ public class SilkUtil {
     public boolean isPluginEnabled(String _plugin) {
         Plugin pluginToCheck = plugin.getServer().getPluginManager().getPlugin(_plugin);
         return pluginToCheck != null && pluginToCheck.isEnabled();
+    }
+
+    /**
+     * Checks if there is only one spawn egg material. This means SilkSpawners is running pre Minecraft 1.13. Minecraft added own materials
+     * for all mobs in the 1.13 update. This effects for instance the egg crafting.
+     *
+     * @return the check result, true for pre 1.13 or false for 1.13 or newer
+     */
+    public boolean isLegacySpawnEggs() {
+        return nmsProvider.getSpawnEggMaterials().size() == 1;
     }
 }

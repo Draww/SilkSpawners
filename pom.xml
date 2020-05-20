@@ -2,9 +2,9 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>de.dustplanet</groupId>
-  <artifactId>SilkSpawners-parent</artifactId>
+  <artifactId>silkspawners-parent</artifactId>
   <packaging>pom</packaging>
-  <version>parent</version>
+  <version>6.1.1-SNAPSHOT</version>
   <name>SilkSpawners Parent</name>
   <url>https://dev.bukkit.org/projects/silkspawners/</url>
 
@@ -21,10 +21,6 @@
 
   <modules>
     <module>modules/API</module>
-    <module>modules/v1_7_R1</module>
-    <module>modules/v1_7_R2</module>
-    <module>modules/v1_7_R3</module>
-    <module>modules/v1_7_R4</module>
     <module>modules/v1_8_R1</module>
     <module>modules/v1_8_R2</module>
     <module>modules/v1_8_R3</module>
@@ -35,6 +31,8 @@
     <module>modules/v1_12_R1</module>
     <module>modules/v1_13_R1</module>
     <module>modules/v1_13_R2</module>
+    <module>modules/v1_14_R1</module>
+    <module>modules/v1_15_R1</module>
     <module>modules/SilkSpawners</module>
   </modules>
 
@@ -52,6 +50,50 @@
           <showWarnings>true</showWarnings>
         </configuration>
       </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-deploy-plugin</artifactId>
+        <version>2.8.2</version>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-release-plugin</artifactId>
+        <version>2.5.3</version>
+        <configuration>
+          <autoVersionSubmodules>true</autoVersionSubmodules>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <version>3.2.0</version>
+        <configuration>
+          <source>1.8</source>
+        </configuration>
+      </plugin>
     </plugins>
   </build>
+
+  <scm>
+    <url>https://github.com/timbru31/SilkSpawners</url>
+    <connection>scm:git:git://github.com/timbru31/SilkSpawners.git</connection>
+    <developerConnection>scm:git:git@github.com:timbru31/SilkSpawners.git</developerConnection>
+    <tag>HEAD</tag>
+  </scm>
+
+  <ciManagement>
+    <url>https://ci.dustplanet.de/job/SilkSpawners</url>
+    <system>jenkins</system>
+  </ciManagement>
+
+  <distributionManagement>
+    <snapshotRepository>
+      <id>dustplanet</id>
+      <url>https://repo.dustplanet.de/artifactory/libs-snapshot-local</url>
+    </snapshotRepository>
+    <repository>
+      <id>dustplanet</id>
+      <url>https://repo.dustplanet.de/artifactory/libs-release-local</url>
+    </repository>
+  </distributionManagement>
 </project>

@@ -19,7 +19,7 @@ import de.dustplanet.util.SilkUtil;
  */
 
 public class SilkSpawnersTabCompleter implements TabCompleter {
-    private String[] commands = { "add", "all", "change", "give", "help", "list", "reload", "rl", "set", "view" };
+    private String[] commands = { "add", "all", "change", "give", "help", "list", "reload", "rl", "set", "view", "info" };
     private SilkUtil su;
 
     public SilkSpawnersTabCompleter(SilkUtil util) {
@@ -32,14 +32,17 @@ public class SilkSpawnersTabCompleter implements TabCompleter {
         if (args.length == 1) {
             String command = args[0].toLowerCase(Locale.ENGLISH);
             return addCommands(command);
-        } else if (args.length == 2 && (args[0].equalsIgnoreCase("change") || args[0].equalsIgnoreCase("set"))) {
+        } else if (args.length == 2 && ("change".equalsIgnoreCase(args[0]) || "set".equalsIgnoreCase(args[0]))) {
             String mob = args[1].toLowerCase(Locale.ENGLISH);
             results.addAll(addMobs(mob));
-        } else if (args.length == 2 && (args[0].equalsIgnoreCase("give") || args[0].equalsIgnoreCase("add"))) {
+        } else if (args.length == 2 && ("give".equalsIgnoreCase(args[0]) || "add".equalsIgnoreCase(args[0]))) {
             String player = args[1].toLowerCase(Locale.ENGLISH);
             results.addAll(addPlayers(player));
-        } else if (args.length == 3 && (args[0].equalsIgnoreCase("give") || args[0].equalsIgnoreCase("add"))) {
+        } else if (args.length == 3 && ("give".equalsIgnoreCase(args[0]) || "add".equalsIgnoreCase(args[0]))) {
             String mob = args[2].toLowerCase(Locale.ENGLISH);
+            results.addAll(addMobs(mob));
+        } else if (args.length == 2 && ("selfget".equalsIgnoreCase(args[0]) || "i".equalsIgnoreCase(args[0]))) {
+            String mob = args[1].toLowerCase(Locale.ENGLISH);
             results.addAll(addMobs(mob));
         }
         return results;
@@ -58,7 +61,7 @@ public class SilkSpawnersTabCompleter implements TabCompleter {
     private ArrayList<String> addMobs(String mob) {
         ArrayList<String> results = new ArrayList<>();
         for (String displayName : su.getDisplayNameToMobID().keySet()) {
-            displayName = displayName.toLowerCase().replace(" ", "");
+            displayName = displayName.toLowerCase(Locale.ENGLISH).replace(" ", "");
             if (displayName.startsWith(mob)) {
                 results.add(displayName);
             }
@@ -69,7 +72,7 @@ public class SilkSpawnersTabCompleter implements TabCompleter {
     private ArrayList<String> addPlayers(String playerString) {
         ArrayList<String> results = new ArrayList<>();
         for (Player player : su.nmsProvider.getOnlinePlayers()) {
-            String displayName = player.getName().toLowerCase().replace(" ", "");
+            String displayName = player.getName().toLowerCase(Locale.ENGLISH).replace(" ", "");
             if (displayName.startsWith(playerString)) {
                 results.add(player.getName());
             }

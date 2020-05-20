@@ -1,7 +1,7 @@
-# creatures: key is official creature type name (mobID), case-sensitive, from https://hub.spigotmc.org/javadocs/bukkit/org/bukkit/entity/EntityType.html
+# The creatures key is official creature type name (mobID), case-sensitive, from https://hub.spigotmc.org/javadocs/bukkit/org/bukkit/entity/EntityType.html
 creatures:
 
-   # Vanilla mobs, from https://minecraft.gamepedia.com/Data_values/Entity_IDs
+   # Vanilla mobs, from https://minecraft.gamepedia.com/Java_Edition_data_values#Entities for 1.13+ and https://minecraft.gamepedia.com/Java_Edition_data_values/Pre-flattening/Entity_IDs for up to 1.12
   Creeper: &creeper
     aliases:
     - c
@@ -206,18 +206,18 @@ creatures:
     - sg
     - sm
     - snowmen
+    - snowman
     enable: true
     enableCraftingSpawner: true
     enableSpawnEggOverride: true
     displayName: Snow Golem
   snowman: *snowman
+  snow_golem: *snowman
   Ozelot: &ocelot
     aliases:
     - ocelot
     - oce
     - o
-    - cat
-    - kitty
     enable: true
     enableCraftingSpawner: true
     enableSpawnEggOverride: true
@@ -334,8 +334,7 @@ creatures:
     enableSpawnEggOverride: true
     displayName: Polar Bear
   polar_bear: *polar_bear
-  elder_guardian:
-    enable: true
+  elder_guardian: *guardian
   wither_skeleton:
     aliases:
       - witherskeleton
@@ -427,6 +426,147 @@ creatures:
     enableCraftingSpawner: true
     enableSpawnEggOverride: true
     displayName: Parrot
+  cod:
+    aliases:
+      - codfish
+      - codling
+    enable: true
+    enableCraftingSpawner: true
+    enableSpawnEggOverride: true
+    displayName: Cod
+  dolphin:
+    aliases:
+      - delphinus
+    enable: true
+    enableCraftingSpawner: true
+    enableSpawnEggOverride: true
+    displayName: Dolphin
+  drowned:
+    aliases:
+      - underwater_z
+      - underwater_zombie
+      - underwaterz
+      - underwaterzombie
+    enable: true
+    enableCraftingSpawner: true
+    enableSpawnEggOverride: true
+    displayName: Drowned
+  evoker:
+    enable: true
+    enableCraftingSpawner: true
+    enableSpawnEggOverride: true
+    displayName: Evoker
+  illusioner:
+    aliases:
+      - illusion
+    enable: true
+    enableCraftingSpawner: true
+    enableSpawnEggOverride: true
+    displayName: Illusioner
+  pufferfish:
+    aliases:
+      - globefish
+      - puffer
+      - blowfish
+    enable: true
+    enableCraftingSpawner: true
+    enableSpawnEggOverride: true
+    displayName: Pufferfish
+  salmon:
+    aliases:
+      - samlet
+      - smolt
+      - grilse
+    enable: true
+    enableCraftingSpawner: true
+    enableSpawnEggOverride: true
+    displayName: Salmon
+  tropical_fish:
+    enable: true
+    enableCraftingSpawner: true
+    enableSpawnEggOverride: true
+    displayName: Tropical Fish
+  turtle:
+    aliases:
+      - testudo
+      - tortoise
+    enable: true
+    enableCraftingSpawner: true
+    enableSpawnEggOverride: true
+    displayName: Turtle
+  vindicator:
+    enable: true
+    enableCraftingSpawner: true
+    enableSpawnEggOverride: true
+    displayName: Vindicator
+  phantom:
+    aliases:
+      - spectre
+      - specter
+    enable: true
+    enableCraftingSpawner: true
+    enableSpawnEggOverride: true
+    displayName: Phantom
+  iron_golem: *villager_golem
+  cat:
+    aliases:
+      - feline
+      - mog
+      - kitty
+    enable: true
+    enableCraftingSpawner: true
+    enableSpawnEggOverride: true
+    displayName: Cat
+  fox:
+    enable: true
+    enableCraftingSpawner: true
+    enableSpawnEggOverride: true
+    displayName: Fox
+  panda:
+    enable: true
+    enableCraftingSpawner: true
+    enableSpawnEggOverride: true
+    displayName: Panda
+  trader_llama:
+    enable: true
+    enableCraftingSpawner: true
+    enableSpawnEggOverride: true
+    displayName: Trader Llama
+  pillager:
+    aliases:
+      - looter
+      - plunderer
+      - depredator
+      - raider
+      - scavenger
+    enable: true
+    enableCraftingSpawner: true
+    enableSpawnEggOverride: true
+    displayName: Pillager
+  wandering_trader:
+    aliases:
+      - wanderer
+    enable: true
+    enableCraftingSpawner: true
+    enableSpawnEggOverride: true
+    displayName: Wandering Trader
+  ravager:
+    aliases:
+      - devastator
+      - desolater
+      - desolator
+    enable: true
+    enableCraftingSpawner: true
+    enableSpawnEggOverride: true
+    displayName: Ravager
+  bee:
+    aliases:
+      - bees
+    enable: true
+    enableCraftingSpawner: true
+    enableSpawnEggOverride: true
+    displayName: Bee
+
 
   # Non-mob vanilla entities
   # Enable on your own risk, some might work, some not!
@@ -508,6 +648,7 @@ creatures:
   MinecartSpawner: &spawner_minecart
     enable: false
   spawner_minecart: *spawner_minecart
+  MinecartMobSpawner: *spawner_minecart
   LeashKnot: &leash_knot
     enable: false
   leash_knot: *leash_knot
@@ -538,4 +679,26 @@ creatures:
   llama_spit:
     enable: false
   evocation_fangs:
+    enable: false
+  end_crystal:
+    enable: false
+  evoker_fangs:
+    enable: false
+  experience_orb:
+    enable: false
+  eye_of_ender:
+    enable: false
+  firework_rocket:
+    enable: false
+  command_block_minecart:
+    enable: false
+  experience_bottle:
+    enable: false
+  lightning_bolt:
+    enable: false
+  player:
+    enable: false
+  fishing_bobber:
+    enable: false
+  trident:
     enable: false

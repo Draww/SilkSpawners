@@ -19,9 +19,9 @@ public class Config extends AbstractConfiguration {
     }
 
     private void loadDefaultConfig() {
-        config.options().header("See documentation at https://dev.bukkit.org/projects/silkspawners/pages/configuration");
         config.addDefault("autoUpdater", true);
-        config.addComment("autoUpdater", "", "# Should the plugin automatically update if an update is available?");
+        config.addComment("autoUpdater", "# See documentation at https://dev.bukkit.org/projects/silkspawners/pages/configuration", "",
+                "# Should the plugin automatically update if an update is available?");
         config.addDefault("permissionExplode", false);
         config.addComment("permissionExplode", "", "# Should a permission be required when a spawner explodes by TNT to achieve a drop");
         config.addDefault("useWorldGuard", true);
@@ -34,10 +34,10 @@ public class Config extends AbstractConfiguration {
         config.addComment("eggDropChance", "", "# Percentage of dropping an egg when a spawner is mined");
         config.addDefault("silkDropChance", 100);
         config.addComment("silkDropChance", "", "# Percentage of dropping the spawner when mined");
-        config.addDefault("defaultCreature", 90);
+        config.addDefault("defaultCreature", "pig");
         config.addComment("defaultCreature", "",
                 "# When generic spawner items are placed, spawn this creature (e.g. from /give or other plugins)",
-                "# PIG (90) is Minecraft default (put NAMES or IDs here!)");
+                "# PIG (90) is Minecraft default (put NAMES or IDs (for Minecraft <1.13 here!)");
         config.addDefault("spawnerCommandReachDistance", 6);
         config.addComment("spawnerCommandReachDistance", "", "# How far is the spawner reachable with your crosshair (disable with -1)");
         config.addDefault("minSilkTouchLevel", 1);
@@ -80,8 +80,6 @@ public class Config extends AbstractConfiguration {
         config.addComment("consumeEgg", "", "# Should the egg be consumed when the spawner is changed with it");
         config.addDefault("enableCreatureDefault", true);
         config.addComment("enableCreatureDefault", "", "# Fallback if the creature should be enabled, if not specified for the entity");
-        config.addDefault("ignoreCheckNumbers", false);
-        config.addComment("ignoreCheckNumbers", "", "# Should numbers be ignored (on eggs) and allow every number value?");
         config.addDefault("disableChangeTypeWithEgg", false);
         config.addComment("disableChangeTypeWithEgg", "",
                 "# Disable left click to change spawners, spawns a mob instead. Still blocks Vanilla right click behavior.");
@@ -121,8 +119,6 @@ public class Config extends AbstractConfiguration {
         config.addComment("vanillaBossBar", "", "# Configure displaying with 1.9 BossBarApi, time is in seconds");
         config.addDefault("factionsSupport", false);
         config.addComment("factionsSupport", "", "# Prevent that a spawner is changed via eggs in other territories");
-        config.addDefault("feudalSupport", false);
-        config.addComment("feudalSupport", "", "# Prevent that a spawner is changed via eggs in other kingdoms");
         config.addDefault("verboseConfig", false);
         config.addComment("verboseConfig", "", "# Puts more information out on startup");
         config.addDefault("useReflection", true);

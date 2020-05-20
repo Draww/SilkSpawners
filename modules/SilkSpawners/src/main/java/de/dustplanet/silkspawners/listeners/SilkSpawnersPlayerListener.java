@@ -1,5 +1,7 @@
 package de.dustplanet.silkspawners.listeners;
 
+import java.util.Locale;
+
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -26,9 +28,6 @@ import com.massivecraft.massivecore.ps.PS;
 import de.dustplanet.silkspawners.SilkSpawners;
 import de.dustplanet.silkspawners.events.SilkSpawnersSpawnerChangeEvent;
 import de.dustplanet.util.SilkUtil;
-import us.forseth11.feudal.core.Feudal;
-import us.forseth11.feudal.kingdoms.Kingdom;
-import us.forseth11.feudal.kingdoms.Land;
 
 /**
  * To show a chat message that a player is holding a mob spawner and it's type.
@@ -74,13 +73,16 @@ public class SilkSpawnersPlayerListener implements Listener {
         }
         ItemStack item = event.getItem();
         Block block = event.getClickedBlock();
+        if (block == null) {
+            return;
+        }
         Player player = event.getPlayer();
         // If we use a spawn egg
-        if (item != null && item.getType() == su.nmsProvider.getSpawnEggMaterial()) {
+        if (item != null && su.nmsProvider.getSpawnEggMaterials().contains(item.getType())) {
             // Get the entityID
             String entityID = su.getStoredEggEntityID(item);
             // Clicked spawner with monster egg to change type
-            if (block != null && block.getType() == su.nmsProvider.getSpawnerMaterial()) {
+            if (block.getType() == su.nmsProvider.getSpawnerMaterial()) {
                 Action action = event.getAction();
                 if (action != Action.LEFT_CLICK_BLOCK && action != Action.RIGHT_CLICK_BLOCK) {
                     return;
@@ -95,7 +97,7 @@ public class SilkSpawnersPlayerListener implements Listener {
                 }
 
                 // Mob
-                String mobName = su.getCreatureName(entityID).toLowerCase().replace(" ", "");
+                String mobName = su.getCreatureName(entityID).toLowerCase(Locale.ENGLISH).replace(" ", "");
 
                 if (!player.hasPermission("silkspawners.changetypewithegg." + mobName)) {
                     su.sendMessage(player, ChatColor.translateAlternateColorCodes('\u0026',
@@ -126,16 +128,6 @@ public class SilkSpawnersPlayerListener implements Listener {
                                     plugin.localization.getString("changingDeniedFactions")));
                             return;
                         }
-                    }
-                }
-                if (plugin.config.getBoolean("feudalSupport", false) && su.isPluginEnabled("Feudal")) {
-                    Land blockLand = new Land(block.getLocation());
-                    Kingdom blockKingdom = Feudal.getLandKingdom(blockLand);
-                    if (blockKingdom != null && !blockKingdom.isMember(player.getUniqueId().toString())) {
-                        event.setCancelled(true);
-                        su.sendMessage(player,
-                                ChatColor.translateAlternateColorCodes('\u0026', plugin.localization.getString("changingDeniedFeudal")));
-                        return;
                     }
                 }
 

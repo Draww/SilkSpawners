@@ -1,11 +1,14 @@
 package de.dustplanet.silkspawners.compat.v1_8_R1;
 
 import java.lang.reflect.Field;
-import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
-import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.UUID;
 
 import javax.annotation.Nullable;
@@ -31,6 +34,7 @@ import net.minecraft.server.v1_8_R1.World;
 
 public class NMSHandler implements NMSProvider {
     private Field tileField;
+    private SortedMap<String, Integer> entitiesMaps = new TreeMap<>();
 
     public NMSHandler() {
         try {
@@ -60,21 +64,27 @@ public class NMSHandler implements NMSProvider {
     }
 
     @Override
-    public List<String> rawEntityMap() {
-        List<String> entities = new ArrayList<>();
+    public SortedMap<Integer, String> legacyRawEntityMap() {
+        SortedMap<Integer, String> sortedMap = new TreeMap<>();
+        // Use reflection to dump native EntityTypes
+        // This bypasses Bukkit's wrappers, so it works with mods
         try {
+            // TODO Needs 1.8 source
+            // g.put(s, Integer.valueOf(i)); --> Name of ID
             Field field = EntityTypes.class.getDeclaredField("g");
             field.setAccessible(true);
             @SuppressWarnings("unchecked")
             Map<String, Integer> map = (Map<String, Integer>) field.get(null);
-            for (String entity : map.keySet()) {
-                entities.add(entity);
+            // For each entry in our name -- ID map but it into the sortedMap
+            for (Map.Entry<String, Integer> entry : map.entrySet()) {
+                sortedMap.put(entry.getValue(), entry.getKey());
+                entitiesMaps.put(entry.getKey(), entry.getValue());
             }
         } catch (SecurityException | NoSuchFieldException | IllegalArgumentException | IllegalAccessException e) {
             Bukkit.getLogger().severe("[SilkSpawners] Failed to dump entity map: " + e.getMessage());
             e.printStackTrace();
         }
-        return entities;
+        return sortedMap;
     }
 
     @Override
@@ -97,11 +107,13 @@ public class NMSHandler implements NMSProvider {
 
     @Override
     public boolean setMobNameOfSpawner(BlockState blockState, String mobID) {
+        // Prevent ResourceKeyInvalidException: Non [a-z0-9/._-] character in path of location
+        String safeMobID = mobID.replace(' ', '_').toLowerCase(Locale.ENGLISH);
         CraftCreatureSpawner spawner = (CraftCreatureSpawner) blockState;
 
         try {
             TileEntityMobSpawner tile = (TileEntityMobSpawner) tileField.get(spawner);
-            tile.getSpawner().setMobName(mobID);
+            tile.getSpawner().setMobName(safeMobID);
             return true;
         } catch (IllegalArgumentException | IllegalAccessException e) {
             Bukkit.getLogger().warning("[SilkSpawners] Reflection failed: " + e.getMessage());
@@ -198,8 +210,8 @@ public class NMSHandler implements NMSProvider {
     }
 
     @Override
-    public ItemStack newEggItem(String entity, int amount) {
-        return new ItemStack(Material.MONSTER_EGG, amount);
+    public ItemStack newEggItem(String entityID, int amount, String displayName) {
+        return new ItemStack(Material.MONSTER_EGG, amount, this.entitiesMaps.get(entityID).shortValue());
     }
 
     @Override
@@ -244,5 +256,25 @@ public class NMSHandler implements NMSProvider {
     @Override
     public void setSpawnerItemInHand(Player player, ItemStack newItem) {
         player.setItemInHand(newItem);
+    }
+
+    @Override
+    public Collection<Material> getSpawnEggMaterials() {
+        return Collections.singleton(Material.MONSTER_EGG);
+    }
+
+    @Override
+    public int getIDForEntity(String entityID) {
+        return entitiesMaps.get(entityID);
+    }
+
+    @Override
+    public Material getSpawnerMaterial() {
+        return Material.MOB_SPAWNER;
+    }
+
+    @Override
+    public Material getIronFenceMaterial() {
+        return Material.IRON_FENCE;
     }
 }

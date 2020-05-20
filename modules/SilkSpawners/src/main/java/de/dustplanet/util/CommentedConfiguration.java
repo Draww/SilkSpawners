@@ -10,6 +10,7 @@ import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 
 import org.bukkit.configuration.InvalidConfigurationException;
@@ -47,14 +48,13 @@ public class CommentedConfiguration extends YamlConfiguration {
         yamlOptions.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
         yamlRepresenter.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
 
-        String header = buildHeader();
         String dump = yaml.dump(getValues(false));
 
         if (dump.equals(BLANK_CONFIG)) {
             dump = "";
         }
 
-        return header + dump;
+        return dump;
     }
 
     public boolean load() {
@@ -84,7 +84,7 @@ public class CommentedConfiguration extends YamlConfiguration {
         // if there's comments to add and it saved fine, we need to add comments
         if (!comments.isEmpty() && saved) {
             // String array of each line in the config file
-            String[] yamlContents = convertFileToString(file).split("[" + System.getProperty("line.separator") + "]");
+            String[] yamlContents = convertFileToString(file).split("[" + System.lineSeparator() + "]");
 
             // This will hold the newly formatted line
             String newContents = "";
@@ -172,9 +172,6 @@ public class CommentedConfiguration extends YamlConfiguration {
                                 currentPath = currentPath.replace(currentPath.substring(currentPath.lastIndexOf('.')), "");
                                 currentPath += ".";
                             }
-                            // currentPath =
-                            // currentPath.replace(currentPath.substring(currentPath.lastIndexOf(".")),
-                            // "");
                             currentPath += line.substring(whiteSpace, index);
 
                         }
@@ -192,27 +189,26 @@ public class CommentedConfiguration extends YamlConfiguration {
                     }
                     if (comment != null) {
                         // Add the comment to the beginning of the current line
-                        line = comment + System.getProperty("line.separator") + line + System.getProperty("line.separator");
+                        line = comment + System.lineSeparator() + line + System.lineSeparator();
                         commentedPath = true;
                     } else {
                         // Add a new line as it is a node, but has no comment
-                        line += System.getProperty("line.separator");
+                        line += System.lineSeparator();
                     }
                 }
                 // Add the (modified) line to the total config String
-                newContents += line + (!node ? System.getProperty("line.separator") : "");
+                newContents += line + (!node ? System.lineSeparator() : "");
 
             }
             /*
-             * Due to a bukkit bug we need to strip any extra new lines from the
-             * beginning of this file, else they will multiply.
+             * Due to a bukkit bug we need to strip any extra new lines from the beginning of this file, else they will multiply.
              */
-            while (newContents.startsWith(System.getProperty("line.separator"))) {
-                newContents = newContents.replaceFirst(System.getProperty("line.separator"), "");
+            while (newContents.startsWith(System.lineSeparator())) {
+                newContents = newContents.replaceFirst(System.lineSeparator(), "");
             }
 
             // Write the string to the config file
-            if (!stringToFile(newContents, file)) {
+            if (!writeStringToFile(newContents, file)) {
                 saved = false;
             }
         }
@@ -220,8 +216,7 @@ public class CommentedConfiguration extends YamlConfiguration {
     }
 
     /**
-     * Adds a comment just before the specified path. The comment can be
-     * multiple lines. An empty string will indicate a blank line.
+     * Adds a comment just before the specified path. The comment can be multiple lines. An empty string will indicate a blank line.
      *
      * @param path - Configuration path to add comment.
      * @param commentLines - Comments to add. One String per line.
@@ -234,16 +229,15 @@ public class CommentedConfiguration extends YamlConfiguration {
                 leadingSpaces += "  ";
             }
         }
-        for (String line : commentLines) {
+        for (int index = 0; index < commentLines.length; index++) {
+            String line = commentLines[index];
             if (!line.isEmpty()) {
                 line = leadingSpaces + line;
-            } else {
-                line = " ";
-            }
-            if (commentstring.length() > 0) {
-                commentstring.append("\r\n");
             }
             commentstring.append(line);
+            if (index + 1 != commentLines.length) {
+                commentstring.append(System.lineSeparator());
+            }
         }
         comments.put(path, commentstring.toString());
     }
@@ -251,15 +245,17 @@ public class CommentedConfiguration extends YamlConfiguration {
     /**
      * Pass a file and it will return it's contents as a string.
      *
-     * @param file - File to read.
+     * @param fileToConvert - File to read.
      * @return Contents of file. String will be empty in case of any errors.
      */
-    public String convertFileToString(File file) {
-        if (file != null && file.exists() && file.canRead() && !file.isDirectory()) {
+    @SuppressWarnings("static-method")
+    public String convertFileToString(File fileToConvert) {
+        if (fileToConvert != null && fileToConvert.exists() && fileToConvert.canRead() && !fileToConvert.isDirectory()) {
             char[] buffer = new char[1024];
             String s = "";
             try (Writer writer = new StringWriter();
-                    Reader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"));) {
+                    Reader reader = new BufferedReader(
+                            new InputStreamReader(new FileInputStream(fileToConvert), StandardCharsets.UTF_8));) {
                 int n;
                 while ((n = reader.read(buffer)) != -1) {
                     writer.write(buffer, 0, n);
@@ -278,11 +274,12 @@ public class CommentedConfiguration extends YamlConfiguration {
      * Writes the contents of a string to a file.
      *
      * @param source - String to write.
-     * @param file - File to write to.
+     * @param fileToWriteTo - File to write to.
      * @return True on success.
      */
-    public boolean stringToFile(String source, File file) {
-        try (OutputStreamWriter out = new OutputStreamWriter(new FileOutputStream(file), "UTF-8")) {
+    @SuppressWarnings("static-method")
+    public boolean writeStringToFile(String source, File fileToWriteTo) {
+        try (OutputStreamWriter out = new OutputStreamWriter(new FileOutputStream(fileToWriteTo), StandardCharsets.UTF_8)) {
             out.write(source);
             return true;
         } catch (IOException e) {

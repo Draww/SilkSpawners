@@ -2,10 +2,14 @@ package de.dustplanet.silkspawners.compat.v1_13_R2;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import javax.annotation.Nullable;
 
@@ -24,6 +28,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitRunnable;
 
@@ -37,11 +42,13 @@ import net.minecraft.server.v1_13_R2.NBTTagCompound;
 import net.minecraft.server.v1_13_R2.RegistryID;
 import net.minecraft.server.v1_13_R2.RegistryMaterials;
 import net.minecraft.server.v1_13_R2.TileEntityMobSpawner;
+import net.minecraft.server.v1_13_R2.TileEntityTypes;
 import net.minecraft.server.v1_13_R2.World;
 
 public class NMSHandler implements NMSProvider {
-
     private Field tileField;
+    private Collection<Material> spawnEggs = Arrays.stream(Material.values()).filter(material -> material.name().endsWith("_SPAWN_EGG"))
+            .collect(Collectors.toList());
 
     public NMSHandler() {
         try {
@@ -49,10 +56,9 @@ public class NMSHandler implements NMSProvider {
             tileField.setAccessible(true);
         } catch (SecurityException | NoSuchFieldException e) {
             try {
-                Class.forName("org.bukkit.craftbukkit.v1_13_R2.block.CraftBlockEntityState");
                 tileField = CraftBlockEntityState.class.getDeclaredField("snapshot");
                 tileField.setAccessible(true);
-            } catch (NoSuchFieldException | SecurityException | ClassNotFoundException e1) {
+            } catch (NoSuchFieldException | SecurityException e1) {
                 Bukkit.getLogger().warning("[SilkSpawners] Reflection failed: " + e.getMessage() + " " + e1.getMessage());
                 e.printStackTrace();
                 e1.printStackTrace();
@@ -60,6 +66,7 @@ public class NMSHandler implements NMSProvider {
         }
     }
 
+    @SuppressWarnings("resource")
     @Override
     public void spawnEntity(org.bukkit.World w, String entityID, double x, double y, double z) {
         NBTTagCompound tag = new NBTTagCompound();
@@ -115,7 +122,7 @@ public class NMSHandler implements NMSProvider {
     @Override
     public void setSpawnersUnstackable() {
         try {
-            Item spawner = Item.getById(SPAWNER_ID);
+            Item spawner = IRegistry.ITEM.get(new MinecraftKey(NAMESPACED_SPAWNER_ID));
             Field maxStackSize = Item.class.getDeclaredField("maxStackSize");
             maxStackSize.setAccessible(true);
             maxStackSize.set(spawner, 1);
@@ -126,11 +133,13 @@ public class NMSHandler implements NMSProvider {
 
     @Override
     public boolean setMobNameOfSpawner(BlockState blockState, String mobID) {
+        // Prevent ResourceKeyInvalidException: Non [a-z0-9/._-] character in path of location
+        String safeMobID = mobID.replace(' ', '_').toLowerCase(Locale.ENGLISH);
         CraftCreatureSpawner spawner = (CraftCreatureSpawner) blockState;
 
         try {
             TileEntityMobSpawner tile = (TileEntityMobSpawner) tileField.get(spawner);
-            tile.getSpawner().setMobName(IRegistry.ENTITY_TYPE.get(new MinecraftKey(mobID)));
+            tile.getSpawner().setMobName(IRegistry.ENTITY_TYPE.get(new MinecraftKey(safeMobID)));
             return true;
         } catch (IllegalArgumentException | IllegalAccessException e) {
             Bukkit.getLogger().warning("[SilkSpawners] Reflection failed: " + e.getMessage());
@@ -146,16 +155,17 @@ public class NMSHandler implements NMSProvider {
             return null;
         }
 
+        String prefixedEntity;
+        if (!entity.startsWith("minecraft:")) {
+            prefixedEntity = "minecraft:" + entity;
+        } else {
+            prefixedEntity = entity;
+        }
+
         net.minecraft.server.v1_13_R2.ItemStack itemStack = null;
         CraftItemStack craftStack = CraftItemStack.asCraftCopy(item);
         itemStack = CraftItemStack.asNMSCopy(craftStack);
-        NBTTagCompound tag = itemStack.getTag();
-
-        // Create tag if necessary
-        if (tag == null) {
-            tag = new NBTTagCompound();
-            itemStack.setTag(tag);
-        }
+        NBTTagCompound tag = itemStack.getOrCreateTag();
 
         // Check for SilkSpawners key
         if (!tag.hasKey("SilkSpawners")) {
@@ -169,31 +179,27 @@ public class NMSHandler implements NMSProvider {
             tag.set("BlockEntityTag", new NBTTagCompound());
         }
 
+        tag = tag.getCompound("BlockEntityTag");
+
         // EntityId - Deprecated in 1.9
-        tag.getCompound("BlockEntityTag").setString("EntityId", entity);
+        tag.setString("EntityId", entity);
+        tag.setString("id", TileEntityTypes.a(TileEntityTypes.MOB_SPAWNER).getKey());
 
         // SpawnData
         if (!tag.hasKey("SpawnData")) {
             tag.set("SpawnData", new NBTTagCompound());
         }
-        tag.getCompound("SpawnData").setString("id", entity);
+        tag.getCompound("SpawnData").setString("id", prefixedEntity);
 
-        if (!tag.getCompound("BlockEntityTag").hasKey("SpawnPotentials")) {
-            tag.getCompound("BlockEntityTag").set("SpawnPotentials", new NBTTagCompound());
+        if (!tag.hasKey("SpawnPotentials")) {
+            tag.set("SpawnPotentials", new NBTTagCompound());
         }
 
         // SpawnEgg data
         if (!tag.hasKey("EntityTag")) {
             tag.set("EntityTag", new NBTTagCompound());
         }
-        String prefixedEntity;
-        if (!entity.startsWith("minecraft:")) {
-            prefixedEntity = "minecraft:" + entity;
-        } else {
-            prefixedEntity = entity;
-        }
         tag.getCompound("EntityTag").setString("id", prefixedEntity);
-
         return CraftItemStack.asCraftMirror(itemStack);
     }
 
@@ -224,6 +230,7 @@ public class NMSHandler implements NMSProvider {
         }
 
         tag = tag.getCompound("BlockEntityTag");
+        tag.setString("id", TileEntityTypes.a(TileEntityTypes.MOB_SPAWNER).getKey());
         if (tag.hasKey("EntityId")) {
             return tag.getString("EntityId");
         } else if (tag.hasKey("SpawnData") && tag.getCompound("SpawnData").hasKey("id")) {
@@ -251,18 +258,24 @@ public class NMSHandler implements NMSProvider {
         return block;
     }
 
+    @SuppressWarnings("deprecation")
     @Override
-    public ItemStack newEggItem(String entityID, int amount) {
-        ItemStack item = new ItemStack(Material.LEGACY_MONSTER_EGG, amount);
+    public ItemStack newEggItem(String entityID, int amount, String displayName) {
+        Material spawnEgg = Material.matchMaterial(entityID.toUpperCase() + "_SPAWN_EGG");
+        if (spawnEgg == null) {
+            spawnEgg = Material.LEGACY_MONSTER_EGG;
+        }
+
+        ItemStack item = new ItemStack(spawnEgg, amount);
+        if (displayName != null) {
+            ItemMeta itemMeta = item.getItemMeta();
+            itemMeta.setDisplayName(displayName);
+            item.setItemMeta(itemMeta);
+        }
         net.minecraft.server.v1_13_R2.ItemStack itemStack = null;
         CraftItemStack craftStack = CraftItemStack.asCraftCopy(item);
         itemStack = CraftItemStack.asNMSCopy(craftStack);
-        NBTTagCompound tag = itemStack.getTag();
-
-        if (tag == null) {
-            tag = new NBTTagCompound();
-            itemStack.setTag(tag);
-        }
+        NBTTagCompound tag = itemStack.getOrCreateTag();
 
         if (!tag.hasKey("EntityTag")) {
             tag.set("EntityTag", new NBTTagCompound());
@@ -287,12 +300,15 @@ public class NMSHandler implements NMSProvider {
         NBTTagCompound tag = itemStack.getTag();
 
         if (tag == null || !tag.hasKey("EntityTag")) {
-            return null;
-        }
-
-        tag = tag.getCompound("EntityTag");
-        if (tag.hasKey("id")) {
-            return tag.getString("id").replace("minecraft:", "");
+            MinecraftKey vanillaKey = IRegistry.ITEM.getKey(itemStack.getItem());
+            if (vanillaKey != null) {
+                return vanillaKey.getKey().replace("minecraft:", "").replace("_spawn_egg", "");
+            }
+        } else {
+            tag = tag.getCompound("EntityTag");
+            if (tag.hasKey("id")) {
+                return tag.getString("id").replace("minecraft:", "");
+            }
         }
         return null;
     }
@@ -346,7 +362,7 @@ public class NMSHandler implements NMSProvider {
         ItemStack itemInMainHand = player.getInventory().getItemInMainHand();
         ItemStack itemInOffHand = player.getInventory().getItemInOffHand();
         ItemStack eggs;
-        if (itemInMainHand.getType() == Material.LEGACY_MONSTER_EGG) {
+        if (getSpawnEggMaterials().contains(itemInMainHand.getType())) {
             eggs = itemInMainHand;
             if (eggs.getAmount() == 1) {
                 player.getInventory().setItemInMainHand(null);
@@ -370,12 +386,12 @@ public class NMSHandler implements NMSProvider {
         PlayerInventory inv = player.getInventory();
         ItemStack mainHand = inv.getItemInMainHand();
         ItemStack offHand = inv.getItemInOffHand();
-        if ((mainHand.getType() == Material.LEGACY_MONSTER_EGG || mainHand.getType() == Material.SPAWNER)
-                && (offHand.getType() == Material.LEGACY_MONSTER_EGG || offHand.getType() == Material.SPAWNER)) {
+        if ((getSpawnEggMaterials().contains(mainHand.getType()) || mainHand.getType() == Material.SPAWNER)
+                && (getSpawnEggMaterials().contains(offHand.getType()) || offHand.getType() == Material.SPAWNER)) {
             return null; // not determinable
-        } else if (mainHand.getType() == Material.LEGACY_MONSTER_EGG || mainHand.getType() == Material.SPAWNER) {
+        } else if (getSpawnEggMaterials().contains(mainHand.getType()) || mainHand.getType() == Material.SPAWNER) {
             return mainHand;
-        } else if (offHand.getType() == Material.LEGACY_MONSTER_EGG || offHand.getType() == Material.SPAWNER) {
+        } else if (getSpawnEggMaterials().contains(offHand.getType()) || offHand.getType() == Material.SPAWNER) {
             return offHand;
         }
         return null;
@@ -386,29 +402,25 @@ public class NMSHandler implements NMSProvider {
         PlayerInventory inv = player.getInventory();
         ItemStack mainHand = inv.getItemInMainHand();
         ItemStack offHand = inv.getItemInOffHand();
-        if ((mainHand.getType() == Material.LEGACY_MONSTER_EGG || mainHand.getType() == Material.SPAWNER)
-                && (offHand.getType() == Material.LEGACY_MONSTER_EGG || offHand.getType() == Material.SPAWNER)) {
+        if ((getSpawnEggMaterials().contains(mainHand.getType()) || mainHand.getType() == Material.SPAWNER)
+                && (getSpawnEggMaterials().contains(offHand.getType()) || offHand.getType() == Material.SPAWNER)) {
             return; // not determinable
-        } else if (mainHand.getType() == Material.LEGACY_MONSTER_EGG || mainHand.getType() == Material.SPAWNER) {
+        } else if (getSpawnEggMaterials().contains(mainHand.getType()) || mainHand.getType() == Material.SPAWNER) {
             inv.setItemInMainHand(newItem);
-        } else if (offHand.getType() == Material.LEGACY_MONSTER_EGG || offHand.getType() == Material.SPAWNER) {
+        } else if (getSpawnEggMaterials().contains(offHand.getType()) || offHand.getType() == Material.SPAWNER) {
             inv.setItemInOffHand(newItem);
         }
     }
 
-    @Override
-    public Material getSpawnerMaterial() {
-        return Material.SPAWNER;
-    }
-
-    @Override
-    public Material getIronFenceMaterial() {
-        return Material.IRON_BARS;
-    }
-
+    @SuppressWarnings("deprecation")
     @Override
     public Material getSpawnEggMaterial() {
         return Material.LEGACY_MONSTER_EGG;
+    }
+
+    @Override
+    public Collection<Material> getSpawnEggMaterials() {
+        return spawnEggs;
     }
 
 }

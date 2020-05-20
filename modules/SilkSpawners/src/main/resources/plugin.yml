@@ -2,7 +2,7 @@ name: SilkSpawners
 author: xGhOsTkiLLeRx
 authors: [mushroomhostage]
 main: de.dustplanet.silkspawners.SilkSpawners
-version: ${project.version}-b${BUILD_NUMBER}
+version: ${project.version}${build.number}
 url: https://dev.bukkit.org/projects/silkspawners
 description: pick up and move monster spawners using silk touch
 api-version: 1.13
@@ -25,6 +25,7 @@ permissions:
       silkspawners.editshop: true
       silkspawners.use.*: true
       silkspawners.silkdrop.*: true
+      silkspawners.nosilk.*: true
       silkspawners.destroydrop.*: true
       silkspawners.changetype.*: true
       silkspawners.changetypewithegg.*: true
@@ -48,5 +49,5 @@ permissions:
   silkspawners.help:
     description: Allows you to see the help menu
     default: true
-softdepend: [WorldGuard, BarAPI, Factions, Feudal]
+softdepend: [WorldGuard, BarAPI, Factions]
 loadbefore: [MergedSpawner, ShopGUIPlus]

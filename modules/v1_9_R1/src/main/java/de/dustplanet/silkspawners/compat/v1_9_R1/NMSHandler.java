@@ -1,10 +1,13 @@
 package de.dustplanet.silkspawners.compat.v1_9_R1;
 
 import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.UUID;
 
 import javax.annotation.Nullable;
@@ -66,21 +69,25 @@ public class NMSHandler implements NMSProvider {
     }
 
     @Override
-    public List<String> rawEntityMap() {
-        List<String> entities = new ArrayList<>();
+    public SortedMap<Integer, String> legacyRawEntityMap() {
+        SortedMap<Integer, String> sortedMap = new TreeMap<>();
+        // Use reflection to dump native EntityTypes
+        // This bypasses Bukkit's wrappers, so it works with mods
         try {
+            // TODO Needs 1.9 source
+            // g.put(s, Integer.valueOf(i)); --> Name of ID
             Field field = EntityTypes.class.getDeclaredField("g");
             field.setAccessible(true);
             @SuppressWarnings("unchecked")
             Map<String, Integer> map = (Map<String, Integer>) field.get(null);
-            for (String entity : map.keySet()) {
-                entities.add(entity);
+            for (Map.Entry<String, Integer> entry : map.entrySet()) {
+                sortedMap.put(entry.getValue(), entry.getKey());
             }
         } catch (SecurityException | NoSuchFieldException | IllegalArgumentException | IllegalAccessException e) {
             Bukkit.getLogger().severe("[SilkSpawners] Failed to dump entity map: " + e.getMessage());
             e.printStackTrace();
         }
-        return entities;
+        return sortedMap;
     }
 
     @Override
@@ -103,11 +110,13 @@ public class NMSHandler implements NMSProvider {
 
     @Override
     public boolean setMobNameOfSpawner(BlockState blockState, String mobID) {
+        // Prevent ResourceKeyInvalidException: Non [a-z0-9/._-] character in path of location
+        String safeMobID = mobID.replace(' ', '_').toLowerCase(Locale.ENGLISH);
         CraftCreatureSpawner spawner = (CraftCreatureSpawner) blockState;
 
         try {
             TileEntityMobSpawner tile = (TileEntityMobSpawner) tileField.get(spawner);
-            tile.getSpawner().setMobName(mobID);
+            tile.getSpawner().setMobName(safeMobID);
             return true;
         } catch (IllegalArgumentException | IllegalAccessException e) {
             Bukkit.getLogger().warning("[SilkSpawners] Reflection failed: " + e.getMessage());
@@ -154,6 +163,11 @@ public class NMSHandler implements NMSProvider {
             tag.set("SpawnData", new NBTTagCompound());
         }
         tag.getCompound("SpawnData").setString("id", entity);
+
+        if (!tag.getCompound("BlockEntityTag").hasKey("SpawnData")) {
+            tag.getCompound("BlockEntityTag").set("SpawnData", new NBTTagCompound());
+        }
+        tag.getCompound("BlockEntityTag").getCompound("SpawnData").setString("id", entity);
 
         if (!tag.getCompound("BlockEntityTag").hasKey("SpawnPotentials")) {
             tag.getCompound("BlockEntityTag").set("SpawnPotentials", new NBTTagCompound());
@@ -231,7 +245,7 @@ public class NMSHandler implements NMSProvider {
     }
 
     @Override
-    public ItemStack newEggItem(String entityID, int amount) {
+    public ItemStack newEggItem(String entityID, int amount, String displayName) {
         ItemStack item = new ItemStack(Material.MONSTER_EGG, amount);
         net.minecraft.server.v1_9_R1.ItemStack itemStack = null;
         CraftItemStack craftStack = CraftItemStack.asCraftCopy(item);
@@ -372,5 +386,20 @@ public class NMSHandler implements NMSProvider {
         } else if (offHand.getType() == Material.MONSTER_EGG || offHand.getType() == Material.MOB_SPAWNER) {
             inv.setItemInOffHand(newItem);
         }
+    }
+
+    @Override
+    public Collection<Material> getSpawnEggMaterials() {
+        return Collections.singleton(Material.MONSTER_EGG);
+    }
+
+    @Override
+    public Material getSpawnerMaterial() {
+        return Material.MOB_SPAWNER;
+    }
+
+    @Override
+    public Material getIronFenceMaterial() {
+        return Material.IRON_FENCE;
     }
 }

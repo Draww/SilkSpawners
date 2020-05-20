@@ -1,6 +1,7 @@
 package de.dustplanet.silkspawners.listeners;
 
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Random;
 
 import org.bukkit.ChatColor;
@@ -41,10 +42,6 @@ public class SilkSpawnersBlockListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
-        if (event.isCancelled()) {
-            return;
-        }
-
         boolean isFakeEvent = !BlockBreakEvent.class.equals(event.getClass());
         if (isFakeEvent) {
             return;
@@ -80,7 +77,7 @@ public class SilkSpawnersBlockListener implements Listener {
 
         World world = player.getWorld();
 
-        String mobName = su.getCreatureName(entityID).toLowerCase().replace(" ", "");
+        String mobName = su.getCreatureName(entityID).toLowerCase(Locale.ENGLISH).replace(" ", "");
 
         if (plugin.config.getBoolean("noDropsCreative", true) && player.getGameMode() == GameMode.CREATIVE) {
             return;
@@ -111,7 +108,8 @@ public class SilkSpawnersBlockListener implements Listener {
         int randomNumber = rnd.nextInt(100);
         int dropChance = 0;
 
-        if (validToolAndSilkTouch && player.hasPermission("silkspawners.silkdrop." + mobName)) {
+        if ((validToolAndSilkTouch && player.hasPermission("silkspawners.silkdrop." + mobName))
+                || player.hasPermission("silkspawners.nosilk." + mobName)) {
             if (plugin.mobs.contains("creatures." + entityID + ".silkDropChance")) {
                 dropChance = plugin.mobs.getInt("creatures." + entityID + ".silkDropChance", 100);
             } else {
@@ -159,7 +157,7 @@ public class SilkSpawnersBlockListener implements Listener {
                     dropChance = plugin.config.getInt("eggDropChance", 100);
                 }
                 if (randomNumber < dropChance) {
-                    world.dropItemNaturally(block.getLocation(), su.newEggItem(entityID, 1));
+                    world.dropItemNaturally(block.getLocation(), su.newEggItem(entityID, 1, su.getCreatureEggName(entityID)));
                 }
             }
 
@@ -216,7 +214,7 @@ public class SilkSpawnersBlockListener implements Listener {
         entityID = placeEvent.getEntityID();
 
         String creatureName = su.getCreatureName(entityID);
-        String spawnerName = creatureName.toLowerCase().replace(" ", "");
+        String spawnerName = creatureName.toLowerCase(Locale.ENGLISH).replace(" ", "");
 
         if (!player.hasPermission("silkspawners.place." + spawnerName)) {
             event.setCancelled(true);
